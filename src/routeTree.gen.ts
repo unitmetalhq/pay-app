@@ -17,6 +17,9 @@ import { Route as AppSwapRouteImport } from './routes/_app/swap'
 import { Route as AppSendRouteImport } from './routes/_app/send'
 import { Route as AppReceiveRouteImport } from './routes/_app/receive'
 import { Route as AppQueriesRouteImport } from './routes/_app/queries'
+import { Route as AppImportRouteImport } from './routes/_app/import'
+import { Route as AppExportRouteImport } from './routes/_app/export'
+import { Route as AppActivityRouteImport } from './routes/_app/activity'
 import { Route as AppAccountRouteImport } from './routes/_app/account'
 
 const SignupRoute = SignupRouteImport.update({
@@ -58,6 +61,21 @@ const AppQueriesRoute = AppQueriesRouteImport.update({
   path: '/queries',
   getParentRoute: () => AppRoute,
 } as any)
+const AppImportRoute = AppImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppExportRoute = AppExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppActivityRoute = AppActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAccountRoute = AppAccountRouteImport.update({
   id: '/account',
   path: '/account',
@@ -69,6 +87,9 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/account': typeof AppAccountRoute
+  '/activity': typeof AppActivityRoute
+  '/export': typeof AppExportRoute
+  '/import': typeof AppImportRoute
   '/queries': typeof AppQueriesRoute
   '/receive': typeof AppReceiveRoute
   '/send': typeof AppSendRoute
@@ -79,6 +100,9 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/account': typeof AppAccountRoute
+  '/activity': typeof AppActivityRoute
+  '/export': typeof AppExportRoute
+  '/import': typeof AppImportRoute
   '/queries': typeof AppQueriesRoute
   '/receive': typeof AppReceiveRoute
   '/send': typeof AppSendRoute
@@ -91,6 +115,9 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/_app/account': typeof AppAccountRoute
+  '/_app/activity': typeof AppActivityRoute
+  '/_app/export': typeof AppExportRoute
+  '/_app/import': typeof AppImportRoute
   '/_app/queries': typeof AppQueriesRoute
   '/_app/receive': typeof AppReceiveRoute
   '/_app/send': typeof AppSendRoute
@@ -103,6 +130,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/account'
+    | '/activity'
+    | '/export'
+    | '/import'
     | '/queries'
     | '/receive'
     | '/send'
@@ -113,6 +143,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/account'
+    | '/activity'
+    | '/export'
+    | '/import'
     | '/queries'
     | '/receive'
     | '/send'
@@ -124,6 +157,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/_app/account'
+    | '/_app/activity'
+    | '/_app/export'
+    | '/_app/import'
     | '/_app/queries'
     | '/_app/receive'
     | '/_app/send'
@@ -195,6 +231,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppQueriesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/import': {
+      id: '/_app/import'
+      path: '/import'
+      fullPath: '/import'
+      preLoaderRoute: typeof AppImportRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/export': {
+      id: '/_app/export'
+      path: '/export'
+      fullPath: '/export'
+      preLoaderRoute: typeof AppExportRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/activity': {
+      id: '/_app/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof AppActivityRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/account': {
       id: '/_app/account'
       path: '/account'
@@ -207,6 +264,9 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAccountRoute: typeof AppAccountRoute
+  AppActivityRoute: typeof AppActivityRoute
+  AppExportRoute: typeof AppExportRoute
+  AppImportRoute: typeof AppImportRoute
   AppQueriesRoute: typeof AppQueriesRoute
   AppReceiveRoute: typeof AppReceiveRoute
   AppSendRoute: typeof AppSendRoute
@@ -215,6 +275,9 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAccountRoute: AppAccountRoute,
+  AppActivityRoute: AppActivityRoute,
+  AppExportRoute: AppExportRoute,
+  AppImportRoute: AppImportRoute,
   AppQueriesRoute: AppQueriesRoute,
   AppReceiveRoute: AppReceiveRoute,
   AppSendRoute: AppSendRoute,

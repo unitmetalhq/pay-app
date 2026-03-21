@@ -73,7 +73,7 @@ export default function LoginComponent() {
             <div className="flex flex-col gap-2">
               <Select
                 value={field.state.value}
-                onValueChange={(val) => field.handleChange(val)}
+                onValueChange={(val) => field.handleChange(val ?? '')}
               >
                 <SelectTrigger className="rounded-none">
                   <SelectValue placeholder="Select an account" />

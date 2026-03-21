@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client"
 import "./index.css"
 
 // --- Web3 ---
-import { mainnet } from "wagmi/chains"
+import { mainnet, sepolia } from "wagmi/chains"
 import { WagmiProvider, createConfig, http } from "wagmi"
 
 // --- Router ---
@@ -22,9 +22,10 @@ import { ThemeProvider } from "@/components/theme-provider.tsx"
 
 // Web3 config
 const config = createConfig({
-  chains: [mainnet],
+  chains: [mainnet, sepolia],
   transports: {
     [mainnet.id]: http(import.meta.env.VITE_MAINNET_RPC_URL),
+    [sepolia.id]: http(import.meta.env.VITE_MAINNET_RPC_URL),
   },
 });
 
