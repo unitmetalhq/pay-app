@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import SendComponent from '@/components/send-component'
 import BalancesComponent from '@/components/balances-component'
 
-export const Route = createFileRoute('/send')({
+export const Route = createFileRoute('/_app/send')({
   component: SendPage,
 })
 

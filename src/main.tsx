@@ -3,14 +3,8 @@ import { createRoot } from "react-dom/client"
 import "./index.css"
 
 // --- Web3 ---
-import {
-  RainbowKitProvider,
-  getDefaultConfig,
-  lightTheme,
-} from "@rainbow-me/rainbowkit"
-import { mainnet, arbitrum, base, unichain } from "wagmi/chains"
-import { WagmiProvider, http } from "wagmi"
-import "@rainbow-me/rainbowkit/styles.css"
+import { mainnet } from "wagmi/chains"
+import { WagmiProvider, createConfig, http } from "wagmi"
 
 // --- Router ---
 import { RouterProvider, createRouter } from "@tanstack/react-router"
@@ -27,18 +21,12 @@ import { Provider as JotaiProvider } from "jotai"
 import { ThemeProvider } from "@/components/theme-provider.tsx"
 
 // Web3 config
-// TO BE MIGRATED TO SELF DEVELOPED CONNECTOR
-const config = getDefaultConfig({
-  appName: "UnitMetal Web App",
-  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID!,
-  chains: [mainnet, base, arbitrum, unichain],
+const config = createConfig({
+  chains: [mainnet],
   transports: {
-    [mainnet.id]: http(import.meta.env.VITE_MAINNET_RPC_URL!),
-    [base.id]: http(import.meta.env.VITE_BASE_RPC_URL!),
-    [arbitrum.id]: http(import.meta.env.VITE_ARBITRUM_RPC_URL!),
-    [unichain.id]: http(import.meta.env.VITE_UNICHAIN_RPC_URL!),
+    [mainnet.id]: http(import.meta.env.VITE_MAINNET_RPC_URL),
   },
-})
+});
 
 // Router config
 const queryClient = new QueryClient()
@@ -59,11 +47,9 @@ createRoot(document.getElementById("root")!).render(
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <JotaiProvider>
-          <RainbowKitProvider theme={lightTheme({ borderRadius: "none" })}>
-            <ThemeProvider>
-              <RouterProvider router={router} />
-            </ThemeProvider>
-          </RainbowKitProvider>
+          <ThemeProvider>
+            <RouterProvider router={router} />
+          </ThemeProvider>
         </JotaiProvider>
       </QueryClientProvider>
     </WagmiProvider>

@@ -1,163 +1,119 @@
-import { useBalance, useConfig, useConnection, useReadContracts } from "wagmi";
-import { Skeleton } from "@/components/ui/skeleton";
-import { formatUnits, erc20Abi } from "viem";
-import type { Address } from "viem";
-import { TOKENS } from "@/lib/um-token-list";
-// import type { Token } from "@/types/token";
-import { RefreshCw } from "lucide-react";
+import { useEffect } from "react"
+import { useReadContracts } from "wagmi"
+import { useAtomValue, useSetAtom } from "jotai"
+import { Skeleton } from "@/components/ui/skeleton"
+import { formatUnits, erc20Abi } from "viem"
+import type { Address } from "viem"
+import { RefreshCw, TriangleAlert } from "lucide-react"
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
+import { activeWalletAtom } from "@/atoms/activeWalletAtom"
+import { stablecoinTotalAtom } from "@/atoms/stablecoinTotalAtom"
+import { TOKENS } from "@/lib/um-token-list"
+import { Button } from "@/components/ui/button"
 
+const ETHEREUM_CHAIN_ID = 1
+const ETHEREUM_TOKENS = TOKENS[ETHEREUM_CHAIN_ID].filter((t) =>
+  ["USDC", "USDT"].includes(t.symbol)
+)
 
 export default function BalancesComponent() {
-  const config = useConfig();
-  const connection = useConnection();
+  const activeWallet = useAtomValue(activeWalletAtom)
+  const setStablecoinTotal = useSetAtom(stablecoinTotalAtom)
 
-  const isQueryEnabled = !!connection.address && !!connection.chain;
-  const chainId = connection.chain?.id;
-  const nativeCurrency = chainId
-    ? config.chains.find((c) => c.id === chainId)?.nativeCurrency
-    : undefined;
-  const tokens = chainId ? (TOKENS[chainId] ?? []) : [];
+  const address = activeWallet?.address as Address | undefined
+  const isQueryEnabled = !!address
 
-  // Single multicall for all token balances
-  const { data: tokenBalances, isLoading: isLoadingTokens, isError: isErrorTokens, refetch: refetchTokens } = useReadContracts({
-    contracts: tokens.map((token) => ({
-      address: token.address,
+  const { data: tokenBalances, isLoading, isError, refetch } = useReadContracts({
+    contracts: ETHEREUM_TOKENS.map((token) => ({
+      address: token.address as Address,
       abi: erc20Abi,
       functionName: "balanceOf" as const,
-      args: [connection.address!] as [Address],
-      chainId,
+      args: [address!] as [Address],
+      chainId: ETHEREUM_CHAIN_ID,
     })),
-    query: { enabled: isQueryEnabled && tokens.length > 0, refetchOnMount: false },
-  });
-
-  return (
-    <div className="flex flex-col border-2 border-primary gap-2 pb-8 h-fit">
-      <div className="flex flex-row justify-between items-center bg-primary text-secondary pl-1">
-        <h1 className="text-md font-bold">Balances</h1>
-      </div>
-
-      {/* Native balance */}
-      <div className="flex flex-col gap-4 px-4 py-2">
-        <NativeBalanceRow
-          address={connection.address}
-          chainId={chainId}
-          name={nativeCurrency?.name ?? "Native"}
-          symbol={nativeCurrency?.symbol ?? "—"}
-          decimals={nativeCurrency?.decimals ?? 18}
-          isQueryEnabled={isQueryEnabled}
-        />
-      </div>
-
-      {/* Token balances */}
-      {tokens.length > 0 && (
-        <>
-          <div className="px-4">
-            <div className="border-t border-border" />
-          </div>
-          <div className="flex flex-col gap-4 px-4 py-2">
-            {tokens.map((token, i) => {
-              const raw = tokenBalances?.[i];
-              const rawBalance = raw?.status === "success" ? (raw.result as bigint) : undefined;
-              if (!isLoadingTokens && !isErrorTokens && !rawBalance) return null;
-              return (
-                <BalanceRow
-                  key={token.address}
-                  name={token.name}
-                  symbol={token.symbol}
-                  value={formatUnits(rawBalance ?? BigInt(0), token.decimals)}
-                  isLoading={isQueryEnabled && isLoadingTokens}
-                  isError={raw?.status === "failure"}
-                  onRefresh={refetchTokens}
-                />
-              );
-            })}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ── NativeBalanceRow ──────────────────────────────────────────────────────────
-
-function NativeBalanceRow({
-  address,
-  chainId,
-  name,
-  symbol,
-  decimals,
-  isQueryEnabled,
-}: {
-  address: Address | undefined;
-  chainId: number | undefined;
-  name: string;
-  symbol: string;
-  decimals: number;
-  isQueryEnabled: boolean;
-}) {
-  const { data: balance, isLoading, isError, refetch } = useBalance({
-    address: address || undefined,
-    chainId: chainId || undefined,
     query: { enabled: isQueryEnabled, refetchOnMount: false },
-  });
+  })
+
+  useEffect(() => {
+    if (!tokenBalances) return
+    const total = tokenBalances.reduce((acc, raw, i) => {
+      const token = ETHEREUM_TOKENS[i]
+      const rawBalance = raw?.status === "success" ? (raw.result as bigint) : BigInt(0)
+      return acc + parseFloat(formatUnits(rawBalance, token.decimals))
+    }, 0)
+    setStablecoinTotal(total)
+  }, [tokenBalances, setStablecoinTotal])
 
   return (
-    <BalanceRow
-      name={name}
-      symbol={symbol}
-      value={formatUnits(balance?.value ?? BigInt(0), decimals)}
-      isLoading={isQueryEnabled && isLoading}
-      isError={isQueryEnabled && isError}
-      onRefresh={refetch}
-    />
-  );
+    <div className="bg-secondary rounded-none p-6 flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-medium">Balances</h2>
+        <Button className="hover:cursor-pointer" variant="ghost" size="icon" onClick={() => refetch()}>
+          <RefreshCw className={`w-3 h-3 ${isLoading ? "animate-spin" : ""}`} />
+        </Button>
+      </div>
+      {isError && (
+        <Alert className="border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-50">
+        <TriangleAlert className="h-4 w-4" />
+        <AlertTitle>Failed</AlertTitle>
+        <AlertDescription className="flex items-center justify-between">
+          <span>Account creation failed or was cancelled.</span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-4 rounded-none"
+            onClick={() => window.location.reload()}
+          >
+            Refresh
+          </Button>
+        </AlertDescription>
+      </Alert>
+      )}
+      <div className="flex flex-col gap-3">
+        {ETHEREUM_TOKENS.map((token, i) => {
+          const raw = tokenBalances?.[i]
+          const rawBalance = raw?.status === "success" ? (raw.result as bigint) : BigInt(0)
+          const value = formatUnits(rawBalance, token.decimals)
+          return (
+            <BalanceRow
+              key={token.address}
+              symbol={token.symbol}
+              value={value}
+              isLoading={isQueryEnabled && isLoading}
+              isError={raw?.status === "failure"}
+            />
+          )
+        })}
+      </div>
+    </div>
+  )
 }
-
-// ── BalanceRow ────────────────────────────────────────────────────────────────
 
 function BalanceRow({
-  name,
   symbol,
   value,
   isLoading,
   isError,
-  onRefresh,
 }: {
-  name: string;
-  symbol: string;
-  value: string;
-  isLoading: boolean;
-  isError: boolean;
-  onRefresh: () => void;
+  symbol: string
+  value: string
+  isLoading: boolean
+  isError: boolean
 }) {
   return (
-    <div className="flex flex-row justify-between items-center gap-2">
-      <div className="flex flex-col gap-1">
-        <div className="flex flex-row gap-2">
-          <h3>{name}</h3>
-          <h3 className="text-muted-foreground">{symbol}</h3>
-        </div>
-        <p>-- %</p>
+    <div className="flex flex-row justify-between items-center">
+      <div className="flex flex-col gap-0.5">
+        <span className="font-medium">{symbol}</span>
       </div>
-      <div className="flex flex-col gap-1 text-right">
-        <p>$ --</p>
-        <div className="flex flex-row gap-2 items-center justify-end">
-          {isLoading ? (
-            <Skeleton className="w-10 h-4" />
-          ) : isError ? (
-            <span className="text-xs text-destructive">error</span>
-          ) : (
-            <div>{value}</div>
-          )}
-          <button
-            type="button"
-            onClick={onRefresh}
-            className="text-muted-foreground hover:text-foreground hover:cursor-pointer"
-          >
-            <RefreshCw className={`w-3 h-3 ${isLoading ? "animate-spin" : ""}`} />
-          </button>
-        </div>
+      <div className="flex items-center gap-2">
+        {isLoading ? (
+          <Skeleton className="w-16 h-4" />
+        ) : isError ? (
+          <span className="text-xs text-destructive">error</span>
+        ) : (
+          <span>${parseFloat(value).toFixed(2)}</span>
+        )}
       </div>
     </div>
-  );
+  )
 }

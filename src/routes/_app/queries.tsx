@@ -8,7 +8,7 @@ import { QueryEditor } from '@/components/query-editor'
 import { SignaturesInput } from '@/components/signatures-input'
 import { QueryResult } from '@/components/query-result'
 
-export const Route = createFileRoute('/queries')({
+export const Route = createFileRoute('/_app/queries')({
   component: QueryPage,
 })
 

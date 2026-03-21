@@ -13,17 +13,16 @@ import {
 import {
   Home,
   Send,
-  ArrowRightLeft,
-  Database,
-  Settings,
+  ArrowDownToLine,
+  TableProperties
 } from "lucide-react"
 import { Link } from "@tanstack/react-router"
 
 const workspaceItems = [
-  { title: "Home", icon: Home, to: "/" },
+  { title: "Account", icon: Home, to: "/account" },
   { title: "Send", icon: Send, to: "/send" },
-  { title: "Swap", icon: ArrowRightLeft, to: "/swap" },
-  { title: "Queries", icon: Database, to: "/queries" },
+  { title: "Receive", icon: ArrowDownToLine, to: "/receive" },
+  { title: "Activity", icon: TableProperties, to: "/activity"}
 ]
 
 export function AppSidebar() {
@@ -33,32 +32,12 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg">
-              <img src="/icon.svg" alt="UnitMetal" className="h-8 w-8" />
+              <img src="/unitmetal-symbol.svg" alt="UnitMetal" className="h-6 w-6 dark:invert" />
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarMenu>
-            {/* <SidebarMenuItem>
-              <SidebarMenuButton>
-                <Search className="h-4 w-4" />
-                <span>Search</span>
-                <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center rounded border border-sidebar-border bg-sidebar-accent px-1.5 text-xs text-muted-foreground">
-                  /
-                </kbd>
-              </SidebarMenuButton>
-            </SidebarMenuItem> */}
-            <SidebarMenuItem>
-              <SidebarMenuButton>
-                <Settings className="h-4 w-4" />
-                <span>Settings</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
-
         <SidebarGroup>
           <SidebarGroupLabel>Workspace</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -75,7 +54,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
       <SidebarFooter />
     </Sidebar>
   )

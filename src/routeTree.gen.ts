@@ -9,24 +9,28 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SwapRouteImport } from './routes/swap'
-import { Route as SendRouteImport } from './routes/send'
-import { Route as QueriesRouteImport } from './routes/queries'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppSwapRouteImport } from './routes/_app/swap'
+import { Route as AppSendRouteImport } from './routes/_app/send'
+import { Route as AppReceiveRouteImport } from './routes/_app/receive'
+import { Route as AppQueriesRouteImport } from './routes/_app/queries'
+import { Route as AppAccountRouteImport } from './routes/_app/account'
 
-const SwapRoute = SwapRouteImport.update({
-  id: '/swap',
-  path: '/swap',
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SendRoute = SendRouteImport.update({
-  id: '/send',
-  path: '/send',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const QueriesRoute = QueriesRouteImport.update({
-  id: '/queries',
-  path: '/queries',
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -34,62 +38,126 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppSwapRoute = AppSwapRouteImport.update({
+  id: '/swap',
+  path: '/swap',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSendRoute = AppSendRouteImport.update({
+  id: '/send',
+  path: '/send',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReceiveRoute = AppReceiveRouteImport.update({
+  id: '/receive',
+  path: '/receive',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppQueriesRoute = AppQueriesRouteImport.update({
+  id: '/queries',
+  path: '/queries',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAccountRoute = AppAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/queries': typeof QueriesRoute
-  '/send': typeof SendRoute
-  '/swap': typeof SwapRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/account': typeof AppAccountRoute
+  '/queries': typeof AppQueriesRoute
+  '/receive': typeof AppReceiveRoute
+  '/send': typeof AppSendRoute
+  '/swap': typeof AppSwapRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/queries': typeof QueriesRoute
-  '/send': typeof SendRoute
-  '/swap': typeof SwapRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/account': typeof AppAccountRoute
+  '/queries': typeof AppQueriesRoute
+  '/receive': typeof AppReceiveRoute
+  '/send': typeof AppSendRoute
+  '/swap': typeof AppSwapRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/queries': typeof QueriesRoute
-  '/send': typeof SendRoute
-  '/swap': typeof SwapRoute
+  '/_app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/_app/account': typeof AppAccountRoute
+  '/_app/queries': typeof AppQueriesRoute
+  '/_app/receive': typeof AppReceiveRoute
+  '/_app/send': typeof AppSendRoute
+  '/_app/swap': typeof AppSwapRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/queries' | '/send' | '/swap'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/signup'
+    | '/account'
+    | '/queries'
+    | '/receive'
+    | '/send'
+    | '/swap'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/queries' | '/send' | '/swap'
-  id: '__root__' | '/' | '/queries' | '/send' | '/swap'
+  to:
+    | '/'
+    | '/login'
+    | '/signup'
+    | '/account'
+    | '/queries'
+    | '/receive'
+    | '/send'
+    | '/swap'
+  id:
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/login'
+    | '/signup'
+    | '/_app/account'
+    | '/_app/queries'
+    | '/_app/receive'
+    | '/_app/send'
+    | '/_app/swap'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  QueriesRoute: typeof QueriesRoute
-  SendRoute: typeof SendRoute
-  SwapRoute: typeof SwapRoute
+  AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
+  SignupRoute: typeof SignupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/swap': {
-      id: '/swap'
-      path: '/swap'
-      fullPath: '/swap'
-      preLoaderRoute: typeof SwapRouteImport
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/send': {
-      id: '/send'
-      path: '/send'
-      fullPath: '/send'
-      preLoaderRoute: typeof SendRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/queries': {
-      id: '/queries'
-      path: '/queries'
-      fullPath: '/queries'
-      preLoaderRoute: typeof QueriesRouteImport
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -99,14 +167,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/swap': {
+      id: '/_app/swap'
+      path: '/swap'
+      fullPath: '/swap'
+      preLoaderRoute: typeof AppSwapRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/send': {
+      id: '/_app/send'
+      path: '/send'
+      fullPath: '/send'
+      preLoaderRoute: typeof AppSendRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/receive': {
+      id: '/_app/receive'
+      path: '/receive'
+      fullPath: '/receive'
+      preLoaderRoute: typeof AppReceiveRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/queries': {
+      id: '/_app/queries'
+      path: '/queries'
+      fullPath: '/queries'
+      preLoaderRoute: typeof AppQueriesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/account': {
+      id: '/_app/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AppAccountRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
+interface AppRouteChildren {
+  AppAccountRoute: typeof AppAccountRoute
+  AppQueriesRoute: typeof AppQueriesRoute
+  AppReceiveRoute: typeof AppReceiveRoute
+  AppSendRoute: typeof AppSendRoute
+  AppSwapRoute: typeof AppSwapRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAccountRoute: AppAccountRoute,
+  AppQueriesRoute: AppQueriesRoute,
+  AppReceiveRoute: AppReceiveRoute,
+  AppSendRoute: AppSendRoute,
+  AppSwapRoute: AppSwapRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  QueriesRoute: QueriesRoute,
-  SendRoute: SendRoute,
-  SwapRoute: SwapRoute,
+  AppRoute: AppRouteWithChildren,
+  LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
