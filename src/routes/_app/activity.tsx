@@ -5,5 +5,5 @@ export const Route = createFileRoute('/_app/activity')({
 })
 
 function ActivityPage() {
-  return <div>Hello "/_app/activity"!</div>
+  return <div className="flex flex-col p-4">Coming soon!</div>
 }

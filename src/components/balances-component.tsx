@@ -12,7 +12,7 @@ import { selectedChainAtom } from "@/atoms/selectedChainAtom"
 import { TOKENS } from "@/lib/um-token-list"
 import { Button } from "@/components/ui/button"
 
-const STABLECOIN_SYMBOLS = ["USDC", "USDT", "USDbC", "DAI"]
+const STABLECOIN_SYMBOLS = ["USDC", "USDT"]
 
 export default function BalancesComponent() {
   const activeWallet = useAtomValue(activeWalletAtom)

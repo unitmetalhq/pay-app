@@ -19,6 +19,21 @@ export const TOKENS: Record<number, Token[]> = {
       address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
     },
   ],
+  11155111: [
+    // Stablecoins
+    {
+      symbol: "USDC",
+      name: "USD Coin",
+      decimals: 18,
+      address: "0xd27Cf55A4AeCaF43dA2A7Ca939dAD5a013A7d6fA",
+    },
+    {
+      symbol: "USDT",
+      name: "Tether USD",
+      decimals: 18,
+      address: "0x645Ea79423f31b5740EAE00D86A455d376A89F0d",
+    },
+  ],
 
   // ── Base ────────────────────────────────────────────────────────────────────
   8453: [

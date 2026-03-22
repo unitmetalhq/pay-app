@@ -93,7 +93,7 @@ export default function SignupComponent() {
                 value={field.state.value}
                 onChange={(e) => field.handleChange(e.target.value)}
                 onBlur={field.handleBlur}
-                className="p-6"
+                className="p-6 text-lg md:text-lg lg:text-lg"
               />
               <FieldInfo field={field} />
             </div>

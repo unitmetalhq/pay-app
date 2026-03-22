@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import {
-  useConfig,
-  useConnection,
-} from "wagmi";
+import { useConfig } from "wagmi";
+import { useAtomValue } from "jotai";
+import { selectedChainAtom } from "@/atoms/selectedChainAtom";
 import SendNativeTokenForm from "@/components/send-native-token-form";
 import SendErc20TokenForm from "@/components/send-erc20-token-form";
-import SendErc721TokenForm from "@/components/send-erc721-token-form";
 import {
   Select,
   SelectContent,
@@ -16,14 +14,15 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import SendBatchNativeTokenForm from "./send-batch-native-token-form";
+import { TOKENS } from "@/lib/um-token-list";
 
 
 export default function SendComponent() {
   // get Wagmi config
   const config = useConfig();
 
-  // get connection
-  const connection = useConnection();
+  // get selected chain from atom
+  const selectedChainId = useAtomValue(selectedChainAtom);
 
   // selected asset type (empty string = no selection)
   const [selectedSingleAsset, setSelectedSingleAsset] = useState("");
@@ -41,17 +40,19 @@ export default function SendComponent() {
     setSelectedBatchAsset(value ?? "");
   }
 
-  // get native currency symbol for connected chain
-  const nativeSymbol = connection.chain
-    ? (config.chains.find((c) => c.id === connection.chain!.id)?.nativeCurrency.symbol ?? "Native")
-    : "Native";
+  // get native currency symbol for selected chain
+  const nativeSymbol = config.chains.find((c) => c.id === selectedChainId)?.nativeCurrency.symbol ?? "Native";
 
-  // define forms
+  // get token list for selected chain (only USDC and USDT)
+  const chainTokens = (TOKENS[selectedChainId] ?? []).filter((t) =>
+    ["USDC", "USDT"].includes(t.symbol)
+  );
+
+  // define select options: native + USDC/USDT
   const forms = [
-    { label: "Select an asset type", value: "" },
+    { label: "Select an asset", value: "" },
     { label: nativeSymbol, value: "native" },
-    { label: "Token", value: "token" },
-    { label: "NFT", value: "nft" },
+    ...chainTokens.map((t) => ({ label: t.symbol, value: t.address })),
   ]
 
   return (
@@ -86,13 +87,15 @@ export default function SendComponent() {
                 </SelectContent>
               </Select>
               {selectedSingleAsset === "native" && (
-                <SendNativeTokenForm selectedChain={connection.chain?.id || null} />
+                <SendNativeTokenForm selectedChain={selectedChainId} />
               )}
-              {selectedSingleAsset === "token" && (
-                <SendErc20TokenForm selectedChain={connection.chain?.id || null} />
-              )}
-              {selectedSingleAsset === "nft" && (
-                <SendErc721TokenForm selectedChain={connection.chain?.id || null} />
+              {selectedSingleAsset !== "" && selectedSingleAsset !== "native" && (
+                <SendErc20TokenForm
+                  selectedChain={selectedChainId}
+                  tokenAddress={selectedSingleAsset}
+                  decimals={chainTokens.find((t) => t.address === selectedSingleAsset)?.decimals}
+                  symbol={chainTokens.find((t) => t.address === selectedSingleAsset)?.symbol}
+                />
               )}
             </div>
           </TabsContent>
@@ -115,12 +118,9 @@ export default function SendComponent() {
                 </SelectContent>
               </Select>
               {selectedBatchAsset === "native" && (
-                <SendBatchNativeTokenForm selectedChain={connection.chain?.id || null} /> 
+                <SendBatchNativeTokenForm selectedChain={selectedChainId} />
               )}
-              {selectedBatchAsset === "token" && (
-                <div>WIP</div>
-              )}
-              {selectedBatchAsset === "nft" && (
+              {selectedBatchAsset !== "" && selectedBatchAsset !== "native" && (
                 <div>WIP</div>
               )}
             </div>
