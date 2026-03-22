@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useForm, type AnyFieldApi } from '@tanstack/react-form'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, Link } from '@tanstack/react-router'
 import { walletsAtom } from '@/atoms/walletsAtom'
 import { activeWalletAtom } from '@/atoms/activeWalletAtom'
 import { Input } from '@/components/ui/input'
@@ -118,6 +118,7 @@ export default function SignupComponent() {
         </form.Subscribe>
       </form>
       <p className="text-muted-foreground text-xs">By clicking "Continue" you agree to our Terms of Service and Privacy Policy.</p>
+      <p className="text-muted-foreground text-xs">Or log in via <Link to="/import" className="underline underline-offset-4">import a wallet</Link></p>
     </div>
   )
 }
