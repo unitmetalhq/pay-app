@@ -18,7 +18,6 @@ export const BATCH_SAMPLE_CSV = `0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045,0.01
 export function BatchFileUpload({
   nativeBalance,
   isLoadingNativeBalance,
-  atomicBatchSupported,
   selectedChain,
 }: BatchEditorProps) {
   const config = useConfig();
@@ -113,17 +112,13 @@ export function BatchFileUpload({
       const amounts = parsed.valid.map((r) => parseEther(r.amount));
       const total = amounts.reduce((a, b) => a + b, BigInt(0));
 
-      if (atomicBatchSupported) {
-        // EIP-5792 wallet_sendCalls — TBD
-      } else {
-        await writeContract.mutateAsync({
-          address: GASLITEDROP_CONTRACT_ADDRESS,
-          abi: GasliteDropAbi,
-          functionName: "airdropETH",
-          args: [addresses, amounts],
-          value: total,
-        });
-      }
+      await writeContract.mutateAsync({
+        address: GASLITEDROP_CONTRACT_ADDRESS,
+        abi: GasliteDropAbi,
+        functionName: "airdropETH",
+        args: [addresses, amounts],
+        value: total,
+      });
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Transaction failed");
     }

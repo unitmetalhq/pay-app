@@ -17,6 +17,7 @@ import { Route as AppSwapRouteImport } from './routes/_app/swap'
 import { Route as AppSendRouteImport } from './routes/_app/send'
 import { Route as AppReceiveRouteImport } from './routes/_app/receive'
 import { Route as AppQueriesRouteImport } from './routes/_app/queries'
+import { Route as AppMigrateRouteImport } from './routes/_app/migrate'
 import { Route as AppImportRouteImport } from './routes/_app/import'
 import { Route as AppExportRouteImport } from './routes/_app/export'
 import { Route as AppActivityRouteImport } from './routes/_app/activity'
@@ -61,6 +62,11 @@ const AppQueriesRoute = AppQueriesRouteImport.update({
   path: '/queries',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMigrateRoute = AppMigrateRouteImport.update({
+  id: '/migrate',
+  path: '/migrate',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppImportRoute = AppImportRouteImport.update({
   id: '/import',
   path: '/import',
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/activity': typeof AppActivityRoute
   '/export': typeof AppExportRoute
   '/import': typeof AppImportRoute
+  '/migrate': typeof AppMigrateRoute
   '/queries': typeof AppQueriesRoute
   '/receive': typeof AppReceiveRoute
   '/send': typeof AppSendRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/activity': typeof AppActivityRoute
   '/export': typeof AppExportRoute
   '/import': typeof AppImportRoute
+  '/migrate': typeof AppMigrateRoute
   '/queries': typeof AppQueriesRoute
   '/receive': typeof AppReceiveRoute
   '/send': typeof AppSendRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/_app/activity': typeof AppActivityRoute
   '/_app/export': typeof AppExportRoute
   '/_app/import': typeof AppImportRoute
+  '/_app/migrate': typeof AppMigrateRoute
   '/_app/queries': typeof AppQueriesRoute
   '/_app/receive': typeof AppReceiveRoute
   '/_app/send': typeof AppSendRoute
@@ -133,6 +142,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/export'
     | '/import'
+    | '/migrate'
     | '/queries'
     | '/receive'
     | '/send'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/export'
     | '/import'
+    | '/migrate'
     | '/queries'
     | '/receive'
     | '/send'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/_app/activity'
     | '/_app/export'
     | '/_app/import'
+    | '/_app/migrate'
     | '/_app/queries'
     | '/_app/receive'
     | '/_app/send'
@@ -231,6 +243,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppQueriesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/migrate': {
+      id: '/_app/migrate'
+      path: '/migrate'
+      fullPath: '/migrate'
+      preLoaderRoute: typeof AppMigrateRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/import': {
       id: '/_app/import'
       path: '/import'
@@ -267,6 +286,7 @@ interface AppRouteChildren {
   AppActivityRoute: typeof AppActivityRoute
   AppExportRoute: typeof AppExportRoute
   AppImportRoute: typeof AppImportRoute
+  AppMigrateRoute: typeof AppMigrateRoute
   AppQueriesRoute: typeof AppQueriesRoute
   AppReceiveRoute: typeof AppReceiveRoute
   AppSendRoute: typeof AppSendRoute
@@ -278,6 +298,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppActivityRoute: AppActivityRoute,
   AppExportRoute: AppExportRoute,
   AppImportRoute: AppImportRoute,
+  AppMigrateRoute: AppMigrateRoute,
   AppQueriesRoute: AppQueriesRoute,
   AppReceiveRoute: AppReceiveRoute,
   AppSendRoute: AppSendRoute,

@@ -5,11 +5,13 @@ import { useForm, useStore } from "@tanstack/react-form";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import { Loader2, Search, Plus, X, Wallet, Sigma, Eraser } from "lucide-react";
 import { parseEther, formatEther, type Address } from "viem";
-import { useEnsAddress, useWriteContract, useWaitForTransactionReceipt, useConfig, useSimulateContract } from "wagmi";
+import { useEnsAddress, useWriteContract, useWaitForTransactionReceipt, useConfig } from "wagmi";
+import { useAtomValue } from "jotai";
+import { activeWalletAtom } from "@/atoms/activeWalletAtom";
+import { getUmPasskeyWallet } from "@/lib/um-passkey-wallet";
 import { GASLITEDROP_CONTRACT_ADDRESS } from "@/lib/constants";
 import { GasliteDropAbi } from "@/lib/abis/gaslite-drop-abi";
 import { TransactionStatus } from "@/components/transaction-status";
-import { TransactionObject } from "@/components/transaction-object";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { normalize } from "viem/ens";
@@ -180,17 +182,16 @@ function AmountRowStatus({ field }: { field: AnyFieldApi }) {
 export function BatchSimpleEditor({
   nativeBalance,
   isLoadingNativeBalance,
-  atomicBatchSupported,
   selectedChain,
 }: BatchEditorProps) {
   const config = useConfig();
   const blockExplorerUrl = config.chains.find((c) => c.id === selectedChain)?.blockExplorers?.default.url;
 
+  const activeWallet = useAtomValue(activeWalletAtom);
   const writeContract = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash: writeContract.data });
 
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [showTxObject, setShowTxObject] = useState(false);
 
   const form = useForm({
     defaultValues: {
@@ -199,21 +200,30 @@ export function BatchSimpleEditor({
     onSubmit: async ({ value }) => {
       setSubmitError(null);
       try {
+        if (!activeWallet?.name) {
+          console.error("No active wallet");
+          return;
+        }
+
+        const evmAccount = await getUmPasskeyWallet(activeWallet.name);
+        if (!evmAccount) {
+          console.error("Failed to retrieve wallet");
+          return;
+        }
+
         const addresses = value.recipients.map((r) => r.address as Address);
         const amounts = value.recipients.map((r) => parseEther(r.amount));
         const total = amounts.reduce((a, b) => a + b, BigInt(0));
 
-        if (atomicBatchSupported) {
-          // EIP-5792 wallet_sendCalls — TBD
-        } else {
-          await writeContract.mutateAsync({
-            address: GASLITEDROP_CONTRACT_ADDRESS,
-            abi: GasliteDropAbi,
-            functionName: "airdropETH",
-            args: [addresses, amounts],
-            value: total,
-          });
-        }
+        await writeContract.mutateAsync({
+          account: evmAccount,
+          address: GASLITEDROP_CONTRACT_ADDRESS,
+          abi: GasliteDropAbi,
+          chainId: selectedChain || undefined,
+          functionName: "airdropETH",
+          args: [addresses, amounts],
+          value: total,
+        });
       } catch (e) {
         setSubmitError(e instanceof Error ? e.message : "Transaction failed");
       }
@@ -245,28 +255,6 @@ export function BatchSimpleEditor({
 
   const isOverBalance = nativeBalance ? totalAmount > nativeBalance.value : false;
   const symbol = nativeBalance?.symbol ?? "ETH";
-
-  const simulatedAddresses = recipients.map((r) => r.address as Address);
-  const simulatedAmounts = recipients.map((r) => {
-    try {
-      return parseEther(r.amount);
-    } catch {
-      return BigInt(0);
-    }
-  });
-
-  const {
-    data: simulatedTx,
-    isLoading: isLoadingSimulate,
-    isError: isErrorSimulate,
-  } = useSimulateContract({
-    address: GASLITEDROP_CONTRACT_ADDRESS,
-    abi: GasliteDropAbi,
-    functionName: "airdropETH",
-    args: [simulatedAddresses, simulatedAmounts],
-    value: totalAmount,
-    query: { enabled: showTxObject && simulatedAddresses.every((a) => !!a) && totalAmount > BigInt(0) },
-  });
 
   return (
     <form
@@ -391,17 +379,8 @@ export function BatchSimpleEditor({
                 <Eraser className="w-4 h-4" />
               </Button>
               <Button
-                type="button"
-                variant="outline"
-                className="rounded-none hover:cursor-pointer col-span-2"
-                disabled={!canSubmit || isOverBalance || writeContract.isPending || isConfirming}
-                onClick={() => setShowTxObject((prev) => !prev)}
-              >
-                Request
-              </Button>
-              <Button
                 type="submit"
-                className="rounded-none hover:cursor-pointer col-span-2"
+                className="rounded-none hover:cursor-pointer col-span-4"
                 disabled={!canSubmit || isOverBalance || writeContract.isPending || isConfirming}
               >
                 {writeContract.isPending || isConfirming ? (
@@ -413,14 +392,6 @@ export function BatchSimpleEditor({
             </div>
           )}
         </form.Subscribe>
-
-        {showTxObject && (
-          <TransactionObject
-            transactionObject={simulatedTx?.request ?? null}
-            isLoading={isLoadingSimulate}
-            isError={isErrorSimulate}
-          />
-        )}
 
         {submitError && (
           <Alert variant="destructive">

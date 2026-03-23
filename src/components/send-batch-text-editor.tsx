@@ -20,7 +20,6 @@ const CodeMirror = lazy(() => import("@uiw/react-codemirror"));
 export function BatchTextEditor({
   nativeBalance,
   isLoadingNativeBalance,
-  atomicBatchSupported,
   selectedChain,
 }: BatchEditorProps) {
   const config = useConfig();
@@ -83,18 +82,14 @@ export function BatchTextEditor({
       const addresses = parsed.valid.map((r) => r.address);
       const amounts = parsed.valid.map((r) => parseEther(r.amount));
       const total = amounts.reduce((a, b) => a + b, BigInt(0));
-
-      if (atomicBatchSupported) {
-        // EIP-5792 wallet_sendCalls — TBD
-      } else {
-        await writeContract.mutateAsync({
-          address: GASLITEDROP_CONTRACT_ADDRESS,
-          abi: GasliteDropAbi,
-          functionName: "airdropETH",
-          args: [addresses, amounts],
-          value: total,
-        });
-      }
+      
+      await writeContract.mutateAsync({
+        address: GASLITEDROP_CONTRACT_ADDRESS,
+        abi: GasliteDropAbi,
+        functionName: "airdropETH",
+        args: [addresses, amounts],
+        value: total,
+      });
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : "Transaction failed");
     }

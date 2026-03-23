@@ -7,6 +7,5 @@ export type ParseResult = { valid: ParsedRecipient[]; errors: ParseError[] };
 export type BatchEditorProps = {
   nativeBalance: { value: bigint; symbol: string; decimals: number } | undefined;
   isLoadingNativeBalance: boolean;
-  atomicBatchSupported: boolean;
   selectedChain: number | null;
 };

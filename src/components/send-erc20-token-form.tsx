@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/input-group";
 import { RefreshCcw } from "lucide-react";
 import { truncateHash } from "@/lib/utils";
-import { Kbd } from "@/components/ui/kbd";
 import { getUmPasskeyWallet } from "@/lib/um-passkey-wallet";
 
 export default function SendErc20TokenForm({
@@ -382,7 +381,6 @@ export default function SendErc20TokenForm({
               <div className="flex flex-col gap-2">
                 <div className="flex flex-row gap-2 items-center">
                   <p className="text-muted-foreground">Recipient</p>
-                  <Kbd>Ctrl + S</Kbd>
                 </div>
                 <InputGroup>
                   <InputGroupInput

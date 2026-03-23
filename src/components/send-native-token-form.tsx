@@ -1,19 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useForm, useStore } from "@tanstack/react-form";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import { Loader2, Check, ExternalLink, Search, Eraser } from "lucide-react";
-import { parseEther, formatEther, stringToHex, type Address } from "viem";
+import { parseEther, formatEther, type Address } from "viem";
 import {
   useConfig,
   useBalance,
   useSendTransaction,
   useWaitForTransactionReceipt,
   useEnsAddress,
-  useConnection,
-  usePrepareTransactionRequest,
 } from "wagmi";
+import { useAtomValue } from "jotai";
+import { activeWalletAtom } from "@/atoms/activeWalletAtom";
 import { normalize } from "viem/ens";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,8 +24,8 @@ import {
 } from "@/components/ui/input-group"
 import { RefreshCcw } from "lucide-react";
 import { truncateHash } from "@/lib/utils";
-import { TransactionObject } from "@/components/transaction-object";
-import { Kbd } from "@/components/ui/kbd";
+import { getUmPasskeyWallet } from "@/lib/um-passkey-wallet";
+
 
 export default function SendNativeTokenForm({
   selectedChain,
@@ -39,8 +38,8 @@ export default function SendNativeTokenForm({
   // check if desktop
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
-  // get connection
-  const connection = useConnection()
+  // get active wallet from atom
+  const activeWallet = useAtomValue(activeWalletAtom);
 
   // send form
   const form = useForm({
@@ -48,10 +47,8 @@ export default function SendNativeTokenForm({
       receivingAddress: "",
       amount: "",
       type: "native",
-      message: "",
     },
     onSubmit: async ({ value }) => {
-      // console.log(value);
 
       if (value.type === "native") {
 
@@ -69,29 +66,34 @@ export default function SendNativeTokenForm({
           recipientAddress = value.receivingAddress as Address;
         }
 
+        // authenticate and get the EVM account via passkey
+        if (!activeWallet?.name) {
+          console.error("No active wallet");
+          return;
+        }
+
+        const evmAccount = await getUmPasskeyWallet(activeWallet.name);
+        if (!evmAccount) {
+          console.error("Failed to retrieve wallet");
+          return;
+        }
+
         // execute the send native transaction
-        sendNativeTransaction({
+        sendNativeTransaction.mutate({
+          account: evmAccount,
           to: recipientAddress,
           value: parseEther(value.amount),
-          chainId: connection.chain?.id || undefined,
-          data: value.message ? stringToHex(value.message) : undefined,
+          chainId: selectedChain || undefined,
         });
       }
     },
   });
-
-  // show/hide prepared transaction object
-  const [showTxObject, setShowTxObject] = useState(false);
 
   // get form values reactively
   const receivingAddress = useStore(
     form.store,
     (state) => state.values.receivingAddress || ""
   );
-  // get amount values
-  const amount = useStore(form.store, (state) => state.values.amount || "");
-  // get message values
-  const message = useStore(form.store, (state) => state.values.message || "");
 
   // get ENS address
   const {
@@ -109,36 +111,8 @@ export default function SendNativeTokenForm({
     },
   });
 
-  // resolve recipient address (ENS or raw)
-  const resolvedRecipient = receivingAddress.endsWith(".eth")
-    ? (ensAddress ?? undefined)
-    : (receivingAddress as Address) || undefined;
-
-  // safely parse amount to avoid throwing on invalid input
-  let parsedAmount: bigint | undefined;
-  try {
-    parsedAmount = amount ? parseEther(amount) : undefined;
-  } catch {
-    parsedAmount = undefined;
-  }
-
-  // prepare transaction request
-  const {
-    data: preparedTx,
-    isLoading: isLoadingPreparedTx,
-    isError: isErrorPreparedTx,
-  } = usePrepareTransactionRequest({
-    to: resolvedRecipient,
-    value: parsedAmount,
-    data: message ? stringToHex(message) : undefined,
-    chainId: connection.chain?.id || undefined,
-    query: {
-      enabled: !!resolvedRecipient && !!parsedAmount,
-    },
-  });
-
   // check if balance query should be enabled
-  const isBalanceQueryEnabled = !!connection.chain && !!connection.address;
+  const isBalanceQueryEnabled = !!selectedChain && !!activeWallet?.address;
 
   // get native balance
   const {
@@ -149,24 +123,19 @@ export default function SendNativeTokenForm({
     query: {
       enabled: isBalanceQueryEnabled,
     },
-    address: connection.address || undefined,
-    chainId: connection.chain?.id || undefined,
+    address: activeWallet?.address as `0x${string}` | undefined,
+    chainId: selectedChain || undefined,
   });
 
   // hook to send native transaction
-  const {
-    data: sendNativeTransactionHash,
-    isPending: isPendingSendNativeTransaction,
-    sendTransaction: sendNativeTransaction,
-    reset: resetSendNativeTransaction,
-  } = useSendTransaction();
+  const sendNativeTransaction = useSendTransaction();
 
   // hook to wait for transaction receipt
   const {
     isLoading: isConfirmingSendNativeTransaction,
     isSuccess: isConfirmedSendNativeTransaction,
   } = useWaitForTransactionReceipt({
-    hash: sendNativeTransactionHash,
+    hash: sendNativeTransaction.data,
     chainId: selectedChain || undefined,
   });
 
@@ -175,32 +144,20 @@ export default function SendNativeTokenForm({
   )?.blockExplorers?.default.url;
 
   function handleReset() {
-    resetSendNativeTransaction();
+    sendNativeTransaction.reset();
     form.reset();
   }
 
-  // Handle keyboard ENS lookup
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.ctrlKey && e.key === "s") {
-        e.preventDefault();
-        refetchEnsAddress();
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [refetchEnsAddress]);
-
   useEffect(() => {
     // reset the transaction state
-    resetSendNativeTransaction();
+    sendNativeTransaction.reset();
 
     // reset the form values
     form.reset();
 
     // refetch the native balance
     refetchNativeBalance();
-  }, [selectedChain, resetSendNativeTransaction, form, refetchNativeBalance]);
+  }, [selectedChain, sendNativeTransaction.reset, form, refetchNativeBalance]);
 
   return (
     <form
@@ -392,7 +349,6 @@ export default function SendNativeTokenForm({
               <div className="flex flex-col gap-2">
                 <div className="flex flex-row gap-2 items-center">
                   <p className="text-muted-foreground">Recipient</p>
-                  <Kbd>Ctrl + S</Kbd>
                 </div>
                 <InputGroup>
                   <InputGroupInput
@@ -431,39 +387,11 @@ export default function SendNativeTokenForm({
             )}
           </form.Field>
         </div>
-        <div>
-          <form.Field name="message">
-            {(field) => (
-              <div className="flex flex-col gap-2">
-                <div className="flex flex-row gap-2 items-center justify-between">
-                  <p className="text-muted-foreground">Message</p>
-                </div>
-                <Input
-                  id={field.name}
-                  name={field.name}
-                  value={field.state.value || ""}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  className="rounded-none"
-                  type="text"
-                  placeholder="Optional message"
-                />
-              </div>
-            )}
-          </form.Field>
-        </div>
         <div className="flex flex-col gap-2">
           <form.Subscribe
-            selector={(state) => [
-              state.canSubmit,
-              isPendingSendNativeTransaction,
-              isConfirmingSendNativeTransaction,
-            ]}
+            selector={(state) => state.canSubmit}
           >
-            {([
-              canSubmit,
-              isPendingSendNativeTransaction,
-              isConfirmingSendNativeTransaction,
-            ]) => (
+            {(canSubmit) => (
               <div className="grid grid-cols-5 gap-2">
                 <Button
                   className="hover:cursor-pointer rounded-none col-span-1"
@@ -472,7 +400,7 @@ export default function SendNativeTokenForm({
                   type="reset"
                   disabled={
                     !canSubmit ||
-                    isPendingSendNativeTransaction ||
+                    sendNativeTransaction.isPending ||
                     isConfirmingSendNativeTransaction
                   }
                   onClick={handleReset}
@@ -480,28 +408,15 @@ export default function SendNativeTokenForm({
                   <Eraser className="w-4 h-4" />
                 </Button>
                 <Button
-                  className="hover:cursor-pointer rounded-none col-span-2"
-                  variant="outline"
-                  type="button"
-                  disabled={
-                    !canSubmit ||
-                    isPendingSendNativeTransaction ||
-                    isConfirmingSendNativeTransaction
-                  }
-                  onClick={() => setShowTxObject((prev) => !prev)}
-                >
-                  Request
-                </Button>
-                <Button
-                  className="hover:cursor-pointer rounded-none col-span-2"
+                  className="hover:cursor-pointer rounded-none col-span-4"
                   type="submit"
                   disabled={
                     !canSubmit ||
-                    isPendingSendNativeTransaction ||
+                    sendNativeTransaction.isPending ||
                     isConfirmingSendNativeTransaction
                   }
                 >
-                  {isPendingSendNativeTransaction ? (
+                  {sendNativeTransaction.isPending ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
                     </>
@@ -520,17 +435,10 @@ export default function SendNativeTokenForm({
               </div>
             )}
           </form.Subscribe>
-          {showTxObject && (
-            <TransactionObject
-              transactionObject={preparedTx}
-              isLoading={isLoadingPreparedTx}
-              isError={isErrorPreparedTx}
-            />
-          )}
           <div className="border-t-2 border-primary pt-4 mt-4">
             <div className="flex flex-col gap-1">
               <div className="flex flex-row gap-2 items-center">
-                {isPendingSendNativeTransaction ? (
+                {sendNativeTransaction.isPending ? (
                   <div className="flex flex-row gap-2 items-center">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     <p>Signing transaction...</p>
@@ -552,17 +460,17 @@ export default function SendNativeTokenForm({
                   </div>
                 )}
               </div>
-              {sendNativeTransactionHash ? (
+              {sendNativeTransaction.data ? (
                 <div className="flex flex-row gap-2 items-center">
                   <p className="text-muted-foreground">&gt;</p>
                   <a
                     target="_blank"
                     rel="noopener noreferrer"
                     className="underline underline-offset-4 hover:cursor-pointer"
-                    href={`${selectedChainBlockExplorer}/tx/${sendNativeTransactionHash}`}
+                    href={`${selectedChainBlockExplorer}/tx/${sendNativeTransaction.data}`}
                   >
                     <div className="flex flex-row gap-2 items-center">
-                      {truncateHash(sendNativeTransactionHash)}
+                      {truncateHash(sendNativeTransaction.data)}
                       <ExternalLink className="w-4 h-4" />
                     </div>
                   </a>
