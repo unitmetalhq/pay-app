@@ -157,7 +157,7 @@ export default function SendNativeTokenForm({
 
     // refetch the native balance
     refetchNativeBalance();
-  }, [selectedChain, sendNativeTransaction.reset, form, refetchNativeBalance]);
+  }, [selectedChain, sendNativeTransaction, form, refetchNativeBalance]);
 
   return (
     <form
