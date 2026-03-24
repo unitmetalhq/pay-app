@@ -6,7 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>UnitMetal Pay</title>
     <meta name="description" content="Pay in stablecoins with next generation experience" />
-
+    <meta
+        http-equiv="Permissions-Policy"
+        content="publickey-credentials-get=\*; publickey-credentials-create=\*"
+    />
+    <meta
+        http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self'; frame-src https://passkey.unitmetal.com;"
+    />
     <!-- Open Graph -->
     <meta property="og:title" content="UnitMetal Pay" />
     <meta property="og:description" content="Pay in stablecoins with next generation experience" />
