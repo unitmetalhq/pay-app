@@ -142,7 +142,7 @@ export default function PasskeyFrame(props: PasskeyFrameProps) {
         ref={iframeRef}
         src={PASSKEY_FRAME_HOST}
         title="passkey"
-        allow="publickey-credentials-create *; publickey-credentials-get *"
+        allow="publickey-credentials-create; publickey-credentials-get"
         className="w-full"
       />
     </div>
