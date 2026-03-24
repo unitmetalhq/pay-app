@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useForm, useStore } from "@tanstack/react-form";
 import type { AnyFieldApi } from "@tanstack/react-form";
@@ -7,13 +7,16 @@ import { parseEther, formatEther, type Address } from "viem";
 import {
   useConfig,
   useBalance,
-  useSendTransaction,
+  usePrepareTransactionRequest,
   useWaitForTransactionReceipt,
   useEnsAddress,
+  usePublicClient,
 } from "wagmi";
+import { useMutation } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { activeWalletAtom } from "@/atoms/activeWalletAtom";
 import { normalize } from "viem/ens";
+import PasskeyFrame from "@/components/passkey-frame";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -24,7 +27,7 @@ import {
 } from "@/components/ui/input-group"
 import { RefreshCcw } from "lucide-react";
 import { truncateHash } from "@/lib/utils";
-import { getUmPasskeyWallet } from "@/lib/um-passkey-wallet";
+import type { TransactionSerializable } from "viem";
 
 
 export default function SendNativeTokenForm({
@@ -41,6 +44,12 @@ export default function SendNativeTokenForm({
   // get active wallet from atom
   const activeWallet = useAtomValue(activeWalletAtom);
 
+  // pending tx params — set on form submit to trigger preparation
+  const [pendingTxParams, setPendingTxParams] = useState<{
+    to: Address;
+    value: bigint;
+  } | null>(null);
+
   // send form
   const form = useForm({
     defaultValues: {
@@ -49,42 +58,15 @@ export default function SendNativeTokenForm({
       type: "native",
     },
     onSubmit: async ({ value }) => {
-
       if (value.type === "native") {
-
-        // resolve ENS to address if needed
         let recipientAddress: Address;
         if (value.receivingAddress.endsWith(".eth")) {
-          // Get the resolved ENS address from the form state
-          // We need to resolve it here if not already resolved
-          if (!ensAddress) {
-            console.error("ENS address not resolved");
-            return;
-          }
+          if (!ensAddress) return;
           recipientAddress = ensAddress as Address;
         } else {
           recipientAddress = value.receivingAddress as Address;
         }
-
-        // authenticate and get the EVM account via passkey
-        if (!activeWallet?.name) {
-          console.error("No active wallet");
-          return;
-        }
-
-        const evmAccount = await getUmPasskeyWallet(activeWallet.name);
-        if (!evmAccount) {
-          console.error("Failed to retrieve wallet");
-          return;
-        }
-
-        // execute the send native transaction
-        sendNativeTransaction.mutate({
-          account: evmAccount,
-          to: recipientAddress,
-          value: parseEther(value.amount),
-          chainId: selectedChain || undefined,
-        });
+        setPendingTxParams({ to: recipientAddress, value: parseEther(value.amount) });
       }
     },
   });
@@ -127,37 +109,58 @@ export default function SendNativeTokenForm({
     chainId: selectedChain || undefined,
   });
 
-  // hook to send native transaction
-  const sendNativeTransaction = useSendTransaction();
+  // prepare transaction request when pendingTxParams is set
+  const { data: preparedTx } = usePrepareTransactionRequest({
+    account: activeWallet?.address as Address | undefined,
+    to: pendingTxParams?.to,
+    value: pendingTxParams?.value,
+    chainId: selectedChain || undefined,
+    query: { enabled: !!pendingTxParams && !!activeWallet?.address },
+  });
+
+  // broadcast signed raw transaction
+  const publicClient = usePublicClient({ chainId: selectedChain || undefined });
+  const sendRawTx = useMutation({
+    mutationFn: (serializedTransaction: `0x${string}`) =>
+      publicClient!.sendRawTransaction({ serializedTransaction }),
+  });
 
   // hook to wait for transaction receipt
   const {
     isLoading: isConfirmingSendNativeTransaction,
     isSuccess: isConfirmedSendNativeTransaction,
   } = useWaitForTransactionReceipt({
-    hash: sendNativeTransaction.data,
+    hash: sendRawTx.data,
     chainId: selectedChain || undefined,
   });
+
+  function handleSigned(signedTx: `0x${string}`) {
+    sendRawTx.mutate(signedTx);
+    setPendingTxParams(null);
+  }
 
   const selectedChainBlockExplorer = config.chains.find(
     (chain) => chain.id.toString() === selectedChain?.toString()
   )?.blockExplorers?.default.url;
 
+  // When user clicks resets form
   function handleReset() {
-    sendNativeTransaction.reset();
+    sendRawTx.reset();
+    setPendingTxParams(null);
     form.reset();
+    refetchNativeBalance();
   }
 
+  // When user switches chain, refetch native balance and reset forms
   useEffect(() => {
-    // reset the transaction state
-    sendNativeTransaction.reset();
-
-    // reset the form values
+    sendRawTx.reset();
+    setPendingTxParams(null);
     form.reset();
 
     // refetch the native balance
     refetchNativeBalance();
-  }, [selectedChain, sendNativeTransaction, form, refetchNativeBalance]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedChain]);
 
   return (
     <form
@@ -400,7 +403,7 @@ export default function SendNativeTokenForm({
                   type="reset"
                   disabled={
                     !canSubmit ||
-                    sendNativeTransaction.isPending ||
+                    sendRawTx.isPending ||
                     isConfirmingSendNativeTransaction
                   }
                   onClick={handleReset}
@@ -412,11 +415,11 @@ export default function SendNativeTokenForm({
                   type="submit"
                   disabled={
                     !canSubmit ||
-                    sendNativeTransaction.isPending ||
+                    sendRawTx.isPending ||
                     isConfirmingSendNativeTransaction
                   }
                 >
-                  {sendNativeTransaction.isPending ? (
+                  {sendRawTx.isPending ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
                     </>
@@ -435,10 +438,18 @@ export default function SendNativeTokenForm({
               </div>
             )}
           </form.Subscribe>
+          {pendingTxParams && preparedTx && (
+            <PasskeyFrame
+              mode="sign"
+              tx={preparedTx as TransactionSerializable}
+              onSigned={handleSigned}
+              onError={() => setPendingTxParams(null)}
+            />
+          )}
           <div className="border-t-2 border-primary pt-4 mt-4">
             <div className="flex flex-col gap-1">
               <div className="flex flex-row gap-2 items-center">
-                {sendNativeTransaction.isPending ? (
+                {sendRawTx.isPending ? (
                   <div className="flex flex-row gap-2 items-center">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     <p>Signing transaction...</p>
@@ -460,17 +471,17 @@ export default function SendNativeTokenForm({
                   </div>
                 )}
               </div>
-              {sendNativeTransaction.data ? (
+              {sendRawTx.data ? (
                 <div className="flex flex-row gap-2 items-center">
                   <p className="text-muted-foreground">&gt;</p>
                   <a
                     target="_blank"
                     rel="noopener noreferrer"
                     className="underline underline-offset-4 hover:cursor-pointer"
-                    href={`${selectedChainBlockExplorer}/tx/${sendNativeTransaction.data}`}
+                    href={`${selectedChainBlockExplorer}/tx/${sendRawTx.data}`}
                   >
                     <div className="flex flex-row gap-2 items-center">
-                      {truncateHash(sendNativeTransaction.data)}
+                      {truncateHash(sendRawTx.data)}
                       <ExternalLink className="w-4 h-4" />
                     </div>
                   </a>

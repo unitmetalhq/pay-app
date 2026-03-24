@@ -20,6 +20,7 @@ import { Route as AppQueriesRouteImport } from './routes/_app/queries'
 import { Route as AppMigrateRouteImport } from './routes/_app/migrate'
 import { Route as AppImportRouteImport } from './routes/_app/import'
 import { Route as AppExportRouteImport } from './routes/_app/export'
+import { Route as AppDeleteRouteImport } from './routes/_app/delete'
 import { Route as AppActivityRouteImport } from './routes/_app/activity'
 import { Route as AppAccountRouteImport } from './routes/_app/account'
 
@@ -77,6 +78,11 @@ const AppExportRoute = AppExportRouteImport.update({
   path: '/export',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDeleteRoute = AppDeleteRouteImport.update({
+  id: '/delete',
+  path: '/delete',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppActivityRoute = AppActivityRouteImport.update({
   id: '/activity',
   path: '/activity',
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/account': typeof AppAccountRoute
   '/activity': typeof AppActivityRoute
+  '/delete': typeof AppDeleteRoute
   '/export': typeof AppExportRoute
   '/import': typeof AppImportRoute
   '/migrate': typeof AppMigrateRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/account': typeof AppAccountRoute
   '/activity': typeof AppActivityRoute
+  '/delete': typeof AppDeleteRoute
   '/export': typeof AppExportRoute
   '/import': typeof AppImportRoute
   '/migrate': typeof AppMigrateRoute
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_app/account': typeof AppAccountRoute
   '/_app/activity': typeof AppActivityRoute
+  '/_app/delete': typeof AppDeleteRoute
   '/_app/export': typeof AppExportRoute
   '/_app/import': typeof AppImportRoute
   '/_app/migrate': typeof AppMigrateRoute
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/account'
     | '/activity'
+    | '/delete'
     | '/export'
     | '/import'
     | '/migrate'
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/account'
     | '/activity'
+    | '/delete'
     | '/export'
     | '/import'
     | '/migrate'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_app/account'
     | '/_app/activity'
+    | '/_app/delete'
     | '/_app/export'
     | '/_app/import'
     | '/_app/migrate'
@@ -264,6 +276,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppExportRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/delete': {
+      id: '/_app/delete'
+      path: '/delete'
+      fullPath: '/delete'
+      preLoaderRoute: typeof AppDeleteRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/activity': {
       id: '/_app/activity'
       path: '/activity'
@@ -284,6 +303,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAccountRoute: typeof AppAccountRoute
   AppActivityRoute: typeof AppActivityRoute
+  AppDeleteRoute: typeof AppDeleteRoute
   AppExportRoute: typeof AppExportRoute
   AppImportRoute: typeof AppImportRoute
   AppMigrateRoute: typeof AppMigrateRoute
@@ -296,6 +316,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAccountRoute: AppAccountRoute,
   AppActivityRoute: AppActivityRoute,
+  AppDeleteRoute: AppDeleteRoute,
   AppExportRoute: AppExportRoute,
   AppImportRoute: AppImportRoute,
   AppMigrateRoute: AppMigrateRoute,

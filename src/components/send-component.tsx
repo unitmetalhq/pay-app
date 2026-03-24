@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import SendBatchNativeTokenForm from "./send-batch-native-token-form";
+// import SendBatchNativeTokenForm from "./send-batch-native-token-form";
 import { TOKENS } from "@/lib/um-token-list";
 
 
@@ -28,7 +28,7 @@ export default function SendComponent() {
   const [selectedSingleAsset, setSelectedSingleAsset] = useState("");
 
   // selected asset type for batch (empty string = no selection)
-  const [selectedBatchAsset, setSelectedBatchAsset] = useState("");
+  // const [selectedBatchAsset, setSelectedBatchAsset] = useState("");
 
   // function to handle select different asset type
   function handleSelectedSingleAssetChange(value: string | null) {
@@ -36,9 +36,9 @@ export default function SendComponent() {
   }
 
   // function to handle select different asset type
-  function handleSelectedBatchAssetChange(value: string | null) {
-    setSelectedBatchAsset(value ?? "");
-  }
+  // function handleSelectedBatchAssetChange(value: string | null) {
+  //   setSelectedBatchAsset(value ?? "");
+  // }
 
   // get native currency symbol for selected chain
   const nativeSymbol = config.chains.find((c) => c.id === selectedChainId)?.nativeCurrency.symbol ?? "Native";
@@ -64,9 +64,9 @@ export default function SendComponent() {
             <TabsTrigger className="rounded-none" value="single">
               Single
             </TabsTrigger>
-            <TabsTrigger className="rounded-none" value="batch">
+            {/* <TabsTrigger className="rounded-none" value="batch">
               Batch
-            </TabsTrigger>
+            </TabsTrigger> */}
           </TabsList>
           <TabsContent value="single">
             <div className="flex flex-col gap-1 mt-2">
@@ -99,7 +99,7 @@ export default function SendComponent() {
               )}
             </div>
           </TabsContent>
-          <TabsContent value="batch" className="flex flex-col gap-4">
+          {/* <TabsContent value="batch" className="flex flex-col gap-4">
             <div className="flex flex-col gap-1 mt-2">
               <Select value={selectedBatchAsset} onValueChange={handleSelectedBatchAssetChange}>
                 <SelectTrigger className="w-64">
@@ -124,7 +124,7 @@ export default function SendComponent() {
                 <div>WIP</div>
               )}
             </div>
-          </TabsContent>
+          </TabsContent> */}
         </Tabs>
       </div>
     </div>

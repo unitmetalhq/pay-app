@@ -1,36 +1,26 @@
 import { useState } from 'react'
 import { useForm, type AnyFieldApi } from '@tanstack/react-form'
-import { useAtomValue, useSetAtom } from 'jotai'
-import { useNavigate, Link } from '@tanstack/react-router'
+import { useAtomValue } from 'jotai'
+import { Link } from '@tanstack/react-router'
 import { walletsAtom } from '@/atoms/walletsAtom'
-import { activeWalletAtom } from '@/atoms/activeWalletAtom'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Loader2, TriangleAlert, Check } from 'lucide-react'
-import { createUmPasskeyWallet, checkBrowserWebAuthnSupport } from '@/lib/um-passkey-wallet'
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+import { Loader2, TriangleAlert } from 'lucide-react'
+import { checkBrowserWebAuthnSupport } from '@/lib/um-passkey-wallet'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import PasskeyFrame from '@/components/passkey-frame'
 
 export default function SignupComponent() {
   const wallets = useAtomValue(walletsAtom)
-  const setActiveWallet = useSetAtom(activeWalletAtom)
   const isWebAuthnSupported = checkBrowserWebAuthnSupport()
-  const [submitError, setSubmitError] = useState(false)
-  const [success, setSuccess] = useState(false)
-  const navigate = useNavigate()
+  const [createWalletAction, setWalletCreateAction] = useState<string | null>(null)
 
   const form = useForm({
     defaultValues: {
       username: '',
     },
     onSubmit: async ({ value }) => {
-      const result = await createUmPasskeyWallet(value.username)
-      if (result) {
-        setActiveWallet(result.activeWallet)
-        setSuccess(true)
-        setTimeout(() => navigate({ to: '/account' }), 1000)
-      } else {
-        setSubmitError(true)
-      }
+      setWalletCreateAction(value.username)
     },
   })
 
@@ -43,23 +33,6 @@ export default function SignupComponent() {
           <TriangleAlert className="h-4 w-4" />
           <AlertDescription>
             Your browser does not support WebAuthn. Please use a modern browser to continue.
-          </AlertDescription>
-        </Alert>
-      )}
-      {submitError && (
-        <Alert className="border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-50">
-          <TriangleAlert className="h-4 w-4" />
-          <AlertTitle>Failed</AlertTitle>
-          <AlertDescription className="flex items-center justify-between">
-            <span>Account creation failed or was cancelled.</span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-4 rounded-none"
-              onClick={() => window.location.reload()}
-            >
-              Refresh
-            </Button>
           </AlertDescription>
         </Alert>
       )}
@@ -104,11 +77,9 @@ export default function SignupComponent() {
             <Button
               type="submit"
               className="w-full rounded-none"
-              disabled={!canSubmit || isSubmitting || success}
+              disabled={!canSubmit || isSubmitting || !!createWalletAction}
             >
-              {success ? (
-                <Check className="text-green-400" />
-              ) : isSubmitting ? (
+              {isSubmitting || createWalletAction ? (
                 <Loader2 className="animate-spin" />
               ) : (
                 'Continue'
@@ -117,6 +88,12 @@ export default function SignupComponent() {
           )}
         </form.Subscribe>
       </form>
+      {createWalletAction && (
+        <PasskeyFrame
+          mode="create"
+          username={createWalletAction}
+        />
+      )}
       <p className="text-muted-foreground text-xs">By clicking "Continue" you agree to our Terms of Service and Privacy Policy.</p>
       <p className="text-muted-foreground text-xs">Or log in via <Link to="/import" className="underline underline-offset-4">import a wallet</Link></p>
     </div>
