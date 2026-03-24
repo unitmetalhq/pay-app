@@ -1,22 +1,20 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useForm, useStore } from "@tanstack/react-form";
 import type { AnyFieldApi } from "@tanstack/react-form";
-import { Loader2, Check, ExternalLink, Search, Eraser } from "lucide-react";
+import { Loader2, Check, Search, Eraser } from "lucide-react";
 import { parseEther, formatEther, type Address } from "viem";
 import {
   useConfig,
   useBalance,
-  usePrepareTransactionRequest,
   useWaitForTransactionReceipt,
   useEnsAddress,
-  usePublicClient,
+  useSendTransaction,
 } from "wagmi";
-import { useMutation } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { activeWalletAtom } from "@/atoms/activeWalletAtom";
 import { normalize } from "viem/ens";
-import PasskeyFrame from "@/components/passkey-frame";
+import { getUmPasskeyWallet } from "@/lib/um-passkey-wallet";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -26,8 +24,7 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group"
 import { RefreshCcw } from "lucide-react";
-import { truncateHash } from "@/lib/utils";
-import type { TransactionSerializable } from "viem";
+import { TransactionStatus } from "@/components/transaction-status";
 
 
 export default function SendNativeTokenForm({
@@ -44,11 +41,13 @@ export default function SendNativeTokenForm({
   // get active wallet from atom
   const activeWallet = useAtomValue(activeWalletAtom);
 
-  // pending tx params — set on form submit to trigger preparation
-  const [pendingTxParams, setPendingTxParams] = useState<{
-    to: Address;
-    value: bigint;
-  } | null>(null);
+  // send transaction
+  const {
+    sendTransaction,
+    data: txHash,
+    isPending: isSendingTransaction,
+    reset: resetSendTransaction,
+  } = useSendTransaction();
 
   // send form
   const form = useForm({
@@ -66,7 +65,14 @@ export default function SendNativeTokenForm({
         } else {
           recipientAddress = value.receivingAddress as Address;
         }
-        setPendingTxParams({ to: recipientAddress, value: parseEther(value.amount) });
+        const account = await getUmPasskeyWallet(activeWallet!.name);
+        if (!account) return;
+        sendTransaction({
+          account,
+          to: recipientAddress,
+          value: parseEther(value.amount),
+          chainId: selectedChain || undefined,
+        });
       }
     },
   });
@@ -109,35 +115,14 @@ export default function SendNativeTokenForm({
     chainId: selectedChain || undefined,
   });
 
-  // prepare transaction request when pendingTxParams is set
-  const { data: preparedTx } = usePrepareTransactionRequest({
-    account: activeWallet?.address as Address | undefined,
-    to: pendingTxParams?.to,
-    value: pendingTxParams?.value,
-    chainId: selectedChain || undefined,
-    query: { enabled: !!pendingTxParams && !!activeWallet?.address },
-  });
-
-  // broadcast signed raw transaction
-  const publicClient = usePublicClient({ chainId: selectedChain || undefined });
-  const sendRawTx = useMutation({
-    mutationFn: (serializedTransaction: `0x${string}`) =>
-      publicClient!.sendRawTransaction({ serializedTransaction }),
-  });
-
   // hook to wait for transaction receipt
   const {
     isLoading: isConfirmingSendNativeTransaction,
     isSuccess: isConfirmedSendNativeTransaction,
   } = useWaitForTransactionReceipt({
-    hash: sendRawTx.data,
+    hash: txHash,
     chainId: selectedChain || undefined,
   });
-
-  function handleSigned(signedTx: `0x${string}`) {
-    sendRawTx.mutate(signedTx);
-    setPendingTxParams(null);
-  }
 
   const selectedChainBlockExplorer = config.chains.find(
     (chain) => chain.id.toString() === selectedChain?.toString()
@@ -145,16 +130,14 @@ export default function SendNativeTokenForm({
 
   // When user clicks resets form
   function handleReset() {
-    sendRawTx.reset();
-    setPendingTxParams(null);
+    resetSendTransaction();
     form.reset();
     refetchNativeBalance();
   }
 
   // When user switches chain, refetch native balance and reset forms
   useEffect(() => {
-    sendRawTx.reset();
-    setPendingTxParams(null);
+    resetSendTransaction();
     form.reset();
 
     // refetch the native balance
@@ -403,7 +386,7 @@ export default function SendNativeTokenForm({
                   type="reset"
                   disabled={
                     !canSubmit ||
-                    sendRawTx.isPending ||
+                    isSendingTransaction ||
                     isConfirmingSendNativeTransaction
                   }
                   onClick={handleReset}
@@ -415,11 +398,11 @@ export default function SendNativeTokenForm({
                   type="submit"
                   disabled={
                     !canSubmit ||
-                    sendRawTx.isPending ||
+                    isSendingTransaction ||
                     isConfirmingSendNativeTransaction
                   }
                 >
-                  {sendRawTx.isPending ? (
+                  {isSendingTransaction ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
                     </>
@@ -438,62 +421,13 @@ export default function SendNativeTokenForm({
               </div>
             )}
           </form.Subscribe>
-          {pendingTxParams && preparedTx && (
-            <PasskeyFrame
-              mode="sign"
-              tx={preparedTx as TransactionSerializable}
-              onSigned={handleSigned}
-              onError={() => setPendingTxParams(null)}
-            />
-          )}
-          <div className="border-t-2 border-primary pt-4 mt-4">
-            <div className="flex flex-col gap-1">
-              <div className="flex flex-row gap-2 items-center">
-                {sendRawTx.isPending ? (
-                  <div className="flex flex-row gap-2 items-center">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <p>Signing transaction...</p>
-                  </div>
-                ) : isConfirmingSendNativeTransaction ? (
-                  <div className="flex flex-row gap-2 items-center">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <p>Confirming transaction...</p>
-                  </div>
-                ) : isConfirmedSendNativeTransaction ? (
-                  <div className="flex flex-row gap-2 items-center">
-                    <Check className="w-4 h-4" />
-                    <p>Transaction confirmed</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-row gap-2 items-center">
-                    <p className="text-muted-foreground">&gt;</p>
-                    <p>No pending transaction</p>
-                  </div>
-                )}
-              </div>
-              {sendRawTx.data ? (
-                <div className="flex flex-row gap-2 items-center">
-                  <p className="text-muted-foreground">&gt;</p>
-                  <a
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline underline-offset-4 hover:cursor-pointer"
-                    href={`${selectedChainBlockExplorer}/tx/${sendRawTx.data}`}
-                  >
-                    <div className="flex flex-row gap-2 items-center">
-                      {truncateHash(sendRawTx.data)}
-                      <ExternalLink className="w-4 h-4" />
-                    </div>
-                  </a>
-                </div>
-              ) : (
-                <div className="flex flex-row gap-2 items-center">
-                  <p className="text-muted-foreground">&gt;</p>
-                  <p>No transaction hash</p>
-                </div>
-              )}
-            </div>
-          </div>
+          <TransactionStatus
+            isPending={isSendingTransaction}
+            isConfirming={isConfirmingSendNativeTransaction}
+            isConfirmed={isConfirmedSendNativeTransaction}
+            txHash={txHash}
+            blockExplorerUrl={selectedChainBlockExplorer}
+          />
         </div>
       </div>
     </form>

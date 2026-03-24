@@ -1,26 +1,36 @@
 import { useState } from 'react'
 import { useForm, type AnyFieldApi } from '@tanstack/react-form'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { Link } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { walletsAtom } from '@/atoms/walletsAtom'
+import { activeWalletAtom } from '@/atoms/activeWalletAtom'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Loader2, TriangleAlert } from 'lucide-react'
-import { checkBrowserWebAuthnSupport } from '@/lib/um-passkey-wallet'
+import { checkBrowserWebAuthnSupport, createUmPasskeyWallet } from '@/lib/um-passkey-wallet'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import PasskeyFrame from '@/components/passkey-frame'
 
 export default function SignupComponent() {
   const wallets = useAtomValue(walletsAtom)
+  const setWallets = useSetAtom(walletsAtom)
+  const setActiveWallet = useSetAtom(activeWalletAtom)
+  const navigate = useNavigate()
   const isWebAuthnSupported = checkBrowserWebAuthnSupport()
-  const [createWalletAction, setWalletCreateAction] = useState<string | null>(null)
+  const [redirecting, setRedirecting] = useState(false)
 
   const form = useForm({
     defaultValues: {
       username: '',
     },
     onSubmit: async ({ value }) => {
-      setWalletCreateAction(value.username)
+      const result = await createUmPasskeyWallet(value.username)
+      if (result?.success) {
+        setWallets(prev => [...prev, result.wallet])
+        setActiveWallet(result.wallet)
+        setRedirecting(true)
+        setTimeout(() => navigate({ to: '/account' }), 1000)
+      }
     },
   })
 
@@ -77,23 +87,13 @@ export default function SignupComponent() {
             <Button
               type="submit"
               className="w-full rounded-none"
-              disabled={!canSubmit || isSubmitting || !!createWalletAction}
+              disabled={!canSubmit || isSubmitting || redirecting}
             >
-              {isSubmitting || createWalletAction ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                'Continue'
-              )}
+              {redirecting ? 'Redirecting to account...' : isSubmitting ? <Loader2 className="animate-spin" /> : 'Continue'}
             </Button>
           )}
         </form.Subscribe>
       </form>
-      {createWalletAction && (
-        <PasskeyFrame
-          mode="create"
-          username={createWalletAction}
-        />
-      )}
       <p className="text-muted-foreground text-xs">By clicking "Continue" you agree to our Terms of Service and Privacy Policy.</p>
       <p className="text-muted-foreground text-xs">Or log in via <Link to="/import" className="underline underline-offset-4">import a wallet</Link></p>
     </div>

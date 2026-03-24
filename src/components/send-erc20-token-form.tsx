@@ -1,22 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useForm, useStore } from "@tanstack/react-form";
 import type { AnyFieldApi } from "@tanstack/react-form";
-import { Loader2, Check, ExternalLink, Eraser, Search } from "lucide-react";
-import { type Address, erc20Abi, formatUnits, parseUnits, encodeFunctionData, type TransactionSerializable } from "viem";
+import { Loader2, Check, Eraser, Search } from "lucide-react";
+import { type Address, erc20Abi, formatUnits, parseUnits } from "viem";
 import {
   useConfig,
   useWaitForTransactionReceipt,
   useEnsAddress,
   useReadContracts,
-  usePrepareTransactionRequest,
-  usePublicClient,
+  useWriteContract,
 } from "wagmi";
-import { useMutation } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import { selectedChainAtom } from "@/atoms/selectedChainAtom";
 import { activeWalletAtom } from "@/atoms/activeWalletAtom";
 import { normalize } from "viem/ens";
+import { getUmPasskeyWallet } from "@/lib/um-passkey-wallet";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -26,8 +25,7 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { RefreshCcw } from "lucide-react";
-import { truncateHash } from "@/lib/utils";
-import PasskeyFrame from "@/components/passkey-frame";
+import { TransactionStatus } from "@/components/transaction-status";
 
 export default function SendErc20TokenForm({
   selectedChain,
@@ -52,11 +50,8 @@ export default function SendErc20TokenForm({
   // get active wallet from atom
   const activeWallet = useAtomValue(activeWalletAtom);
 
-  // pending tx params — set on form submit to trigger preparation
-  const [pendingTxParams, setPendingTxParams] = useState<{
-    to: Address;
-    data: `0x${string}`;
-  } | null>(null);
+  // write contract
+  const writeContract = useWriteContract();
 
   // send form
   const form = useForm({
@@ -75,13 +70,17 @@ export default function SendErc20TokenForm({
           recipientAddress = value.receivingAddress as Address;
         }
 
-        const data = encodeFunctionData({
+        const account = await getUmPasskeyWallet(activeWallet!.name);
+        if (!account) return;
+
+        writeContract.mutate({
+          account,
+          address: resolvedTokenAddress as Address,
           abi: erc20Abi,
           functionName: "transfer",
           args: [recipientAddress, parseUnits(value.amount, decimals)],
+          chainId: selectedChain || undefined,
         });
-
-        setPendingTxParams({ to: resolvedTokenAddress as Address, data });
       }
     },
   });
@@ -137,43 +136,21 @@ export default function SendErc20TokenForm({
     },
   });
 
-  // prepare transaction request when pendingTxParams is set
-  const { data: preparedTx } = usePrepareTransactionRequest({
-    account: activeWallet?.address as Address | undefined,
-    to: pendingTxParams?.to,
-    data: pendingTxParams?.data,
-    chainId: selectedChain || undefined,
-    query: { enabled: !!pendingTxParams && !!activeWallet?.address },
-  });
-
-  // broadcast signed raw transaction
-  const publicClient = usePublicClient({ chainId: selectedChain || undefined });
-  const sendRawTx = useMutation({
-    mutationFn: (serializedTransaction: `0x${string}`) =>
-      publicClient!.sendRawTransaction({ serializedTransaction }),
-  });
-
   // hook to wait for transaction receipt
   const {
     isLoading: isConfirmingSendErc20Transaction,
     isSuccess: isConfirmedSendErc20Transaction,
   } = useWaitForTransactionReceipt({
-    hash: sendRawTx.data,
+    hash: writeContract.data,
     chainId: selectedChain || undefined,
   });
-
-  function handleSigned(signedTx: `0x${string}`) {
-    sendRawTx.mutate(signedTx);
-    setPendingTxParams(null);
-  }
 
   const selectedChainBlockExplorer = config.chains.find(
     (chain) => chain.id.toString() === selectedChain?.toString()
   )?.blockExplorers?.default.url;
 
   function handleReset() {
-    sendRawTx.reset();
-    setPendingTxParams(null);
+    writeContract.reset();
     form.reset();
   }
 
@@ -190,8 +167,7 @@ export default function SendErc20TokenForm({
   }, [refetchEnsAddress]);
 
   useEffect(() => {
-    sendRawTx.reset();
-    setPendingTxParams(null);
+    writeContract.reset();
     form.reset();
     refetchTokenData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -439,7 +415,7 @@ export default function SendErc20TokenForm({
                   type="reset"
                   disabled={
                     !canSubmit ||
-                    sendRawTx.isPending ||
+                    writeContract.isPending ||
                     isConfirmingSendErc20Transaction
                   }
                   onClick={handleReset}
@@ -451,11 +427,11 @@ export default function SendErc20TokenForm({
                   type="submit"
                   disabled={
                     !canSubmit ||
-                    sendRawTx.isPending ||
+                    writeContract.isPending ||
                     isConfirmingSendErc20Transaction
                   }
                 >
-                  {sendRawTx.isPending ? (
+                  {writeContract.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : isConfirmingSendErc20Transaction ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -468,62 +444,13 @@ export default function SendErc20TokenForm({
               </div>
             )}
           </form.Subscribe>
-          {pendingTxParams && preparedTx && (
-            <PasskeyFrame
-              mode="sign"
-              tx={preparedTx as TransactionSerializable}
-              onSigned={handleSigned}
-              onError={() => setPendingTxParams(null)}
-            />
-          )}
-          <div className="border-t-2 border-primary pt-4 mt-4">
-            <div className="flex flex-col gap-1">
-              <div className="flex flex-row gap-2 items-center">
-                {sendRawTx.isPending ? (
-                  <div className="flex flex-row gap-2 items-center">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <p>Signing transaction...</p>
-                  </div>
-                ) : isConfirmingSendErc20Transaction ? (
-                  <div className="flex flex-row gap-2 items-center">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <p>Confirming transaction...</p>
-                  </div>
-                ) : isConfirmedSendErc20Transaction ? (
-                  <div className="flex flex-row gap-2 items-center">
-                    <Check className="w-4 h-4" />
-                    <p>Transaction confirmed</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-row gap-2 items-center">
-                    <p className="text-muted-foreground">&gt;</p>
-                    <p>No pending transaction</p>
-                  </div>
-                )}
-              </div>
-              {sendRawTx.data ? (
-                <div className="flex flex-row gap-2 items-center">
-                  <p className="text-muted-foreground">&gt;</p>
-                  <a
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline underline-offset-4 hover:cursor-pointer"
-                    href={`${selectedChainBlockExplorer}/tx/${sendRawTx.data}`}
-                  >
-                    <div className="flex flex-row gap-2 items-center">
-                      {truncateHash(sendRawTx.data)}
-                      <ExternalLink className="w-4 h-4" />
-                    </div>
-                  </a>
-                </div>
-              ) : (
-                <div className="flex flex-row gap-2 items-center">
-                  <p className="text-muted-foreground">&gt;</p>
-                  <p>No transaction hash</p>
-                </div>
-              )}
-            </div>
-          </div>
+          <TransactionStatus
+            isPending={writeContract.isPending}
+            isConfirming={isConfirmingSendErc20Transaction}
+            isConfirmed={isConfirmedSendErc20Transaction}
+            txHash={writeContract.data}
+            blockExplorerUrl={selectedChainBlockExplorer}
+          />
         </div>
       </div>
     </form>

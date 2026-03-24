@@ -117,22 +117,14 @@ async function createUmPasskeyWallet(name: string) {
     meta: {
       type: "secret-phrase + passkey password",
       note: "the 12 words secret phrase (aka mnemonic phrase) is encrypted with the password using the keystore encryption process",
+      umVersion: "0.1.0"
     },
     handle: Bytes.toHex(handle),
     name: name,
     address: address,
   } as UmKeystore
 
-  // Add the new wallet to the list of wallets in browser storage.
-  const prevWallets: UmKeystore[] = JSON.parse(
-    localStorage.getItem("wallets") ?? "[]"
-  )
-  localStorage.setItem(
-    "wallets",
-    JSON.stringify([...prevWallets, encryptedWithMeta])
-  )
-
-  return { success: true, activeWallet: encryptedWithMeta }
+  return { success: true, wallet: encryptedWithMeta }
 }
 
 async function checkUmPasskeyWallet() {
@@ -190,6 +182,40 @@ async function getUmPasskeyWallet(name: string) {
   return evmAccount
 }
 
+import type { TransactionSerializable } from "viem"
+
+async function signWithUmPasskeyWallet(wallet: UmKeystore, tx: TransactionSerializable) {
+  // Convert the stored handle hex back to Uint8Array
+  const handle = Bytes.fromHex(wallet.handle as `0x${string}`) as Uint8Array<ArrayBuffer>
+
+  // Retrieve the password from biometric authenticated storage
+  const bytes = await getOrThrow(handle)
+  if (!bytes) return null
+
+  // Derive the key using the retrieved password
+  const key = Keystore.toKey(wallet, { password: Bytes.toHex(bytes) })
+
+  // Decrypt the mnemonic
+  const mnemonicHex = Keystore.decrypt(wallet, key)
+
+  // Convert the mnemonicHex to mnemonicBytes
+  const mnemonicBytes = Bytes.fromHex(mnemonicHex)
+
+  // Convert the mnemonicBytes to a mnemonic phrase
+  const mnemonic = Bytes.toString(mnemonicBytes)
+
+  // Derive the EVM account from mnemonic
+  const evmAccount = mnemonicToAccount(mnemonic, {
+    accountIndex: 0,
+    addressIndex: 0,
+  })
+
+  // Sign the transaction
+  const signedTx = await evmAccount.signTransaction(tx)
+
+  return signedTx
+}
+
 export {
   createOrThrow,
   getOrThrow,
@@ -197,5 +223,5 @@ export {
   createUmPasskeyWallet,
   getUmPasskeyWallet,
   checkUmPasskeyWallet,
+  signWithUmPasskeyWallet,
 }
-
